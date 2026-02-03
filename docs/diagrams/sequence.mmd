@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant Caller
+    participant Engine
+    participant Config
+    participant Rule1 as MaxLengthRule
+    participant Rule2 as ForbiddenPatternsRule
+    participant Rule3 as RequireFormatRule
+    participant Result
+
+    Caller->>Engine: Check(content)
+    activate Engine
+
+    Engine->>Engine: Acquire read lock
+    Engine->>Engine: Copy rules slice
+    Engine->>Engine: Release read lock
+
+    Engine->>Result: Create Result{Passed: true}
+
+    loop For each registered rule
+        Engine->>Config: Lookup rule config by Name()
+
+        alt Rule is disabled in config
+            Engine-->>Engine: Skip rule
+        else Rule is enabled or not configured
+            Engine->>Config: Get severity (default: Medium)
+
+            Engine->>Rule1: Check(content)
+            activate Rule1
+
+            alt Content within length limit
+                Rule1-->>Engine: nil (pass)
+                Engine->>Result: Append RuleResult{Passed: true}
+            else Content exceeds limit
+                Rule1-->>Engine: error("content length exceeds maximum")
+                Engine->>Result: Append RuleResult{Passed: false, Error: ...}
+                Engine->>Result: Set Passed = false
+
+                alt StopOnFirstFailure is true
+                    Engine-->>Caller: Return Result
+                end
+            end
+            deactivate Rule1
+
+            Engine->>Rule2: Check(content)
+            activate Rule2
+
+            alt No forbidden patterns matched
+                Rule2-->>Engine: nil (pass)
+                Engine->>Result: Append RuleResult{Passed: true}
+            else Forbidden pattern matched
+                Rule2-->>Engine: error("matches forbidden pattern")
+                Engine->>Result: Append RuleResult{Passed: false, Error: ...}
+                Engine->>Result: Set Passed = false
+
+                alt StopOnFirstFailure is true
+                    Engine-->>Caller: Return Result
+                end
+            end
+            deactivate Rule2
+
+            Engine->>Rule3: Check(content)
+            activate Rule3
+
+            alt Content matches required format
+                Rule3-->>Engine: nil (pass)
+                Engine->>Result: Append RuleResult{Passed: true}
+            else Content does not match format
+                Rule3-->>Engine: error("does not match required format")
+                Engine->>Result: Append RuleResult{Passed: false, Error: ...}
+                Engine->>Result: Set Passed = false
+            end
+            deactivate Rule3
+        end
+    end
+
+    Engine-->>Caller: Return Result
+    deactivate Engine
+
+    Note over Caller,Result: Result.Passed is true only if all enabled rules passed.<br/>Result.Results contains individual RuleResult entries<br/>with rule name, severity, pass/fail, and error message.

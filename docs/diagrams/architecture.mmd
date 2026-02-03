@@ -1,0 +1,104 @@
+graph TD
+    subgraph "digital.vasic.security"
+        subgraph "pkg/guardrails"
+            GEngine["Engine"]
+            GRule["&laquo;interface&raquo;<br/>Rule"]
+            GConfig["Config"]
+            GRuleConfig["RuleConfig"]
+            GResult["Result"]
+            GRuleResult["RuleResult"]
+            GSeverity["Severity"]
+            GMaxLength["MaxLengthRule"]
+            GForbidden["ForbiddenPatternsRule"]
+            GRequire["RequireFormatRule"]
+
+            GEngine --> GRule
+            GEngine --> GConfig
+            GEngine --> GResult
+            GConfig --> GRuleConfig
+            GRuleConfig --> GSeverity
+            GResult --> GRuleResult
+            GRuleResult --> GSeverity
+            GMaxLength -.->|implements| GRule
+            GForbidden -.->|implements| GRule
+            GRequire -.->|implements| GRule
+        end
+
+        subgraph "pkg/pii"
+            PRedactor["Redactor"]
+            PDetector["&laquo;interface&raquo;<br/>Detector"]
+            PConfig["Config"]
+            PMatch["Match"]
+            PType["Type"]
+            PStrategy["RedactionStrategy"]
+            PEmail["EmailDetector"]
+            PPhone["PhoneDetector"]
+            PSSN["SSNDetector"]
+            PCard["CreditCardDetector"]
+            PIP["IPAddressDetector"]
+
+            PRedactor --> PDetector
+            PRedactor --> PConfig
+            PRedactor --> PMatch
+            PConfig --> PType
+            PConfig --> PStrategy
+            PMatch --> PType
+            PEmail -.->|implements| PDetector
+            PPhone -.->|implements| PDetector
+            PSSN -.->|implements| PDetector
+            PCard -.->|implements| PDetector
+            PIP -.->|implements| PDetector
+        end
+
+        subgraph "pkg/content"
+            CChain["ChainFilter"]
+            CFilter["&laquo;interface&raquo;<br/>Filter"]
+            CResult["FilterResult"]
+            CLength["LengthFilter"]
+            CPattern["PatternFilter"]
+            CKeyword["KeywordFilter"]
+
+            CChain --> CFilter
+            CChain --> CResult
+            CLength -.->|implements| CFilter
+            CPattern -.->|implements| CFilter
+            CKeyword -.->|implements| CFilter
+        end
+
+        subgraph "pkg/policy"
+            PEEnforcer["Enforcer"]
+            PEPolicy["Policy"]
+            PERule["Rule"]
+            PECondition["Condition"]
+            PEContext["EvaluationContext"]
+            PEResult["EvaluationResult"]
+            PEDecision["Decision"]
+            PEOperator["Operator"]
+
+            PEEnforcer --> PEPolicy
+            PEEnforcer --> PEResult
+            PEPolicy --> PERule
+            PEPolicy --> PEDecision
+            PERule --> PECondition
+            PERule --> PEDecision
+            PECondition --> PEOperator
+            PEResult --> PEDecision
+        end
+
+        subgraph "pkg/scanner"
+            SScanner["&laquo;interface&raquo;<br/>Scanner"]
+            SFinding["Finding"]
+            SReport["Report"]
+            SSeverity["Severity"]
+
+            SReport --> SFinding
+            SReport --> SSeverity
+            SFinding --> SSeverity
+            SScanner --> SFinding
+        end
+    end
+
+    style GRule fill:#e1f5fe,stroke:#0288d1
+    style PDetector fill:#e1f5fe,stroke:#0288d1
+    style CFilter fill:#e1f5fe,stroke:#0288d1
+    style SScanner fill:#e1f5fe,stroke:#0288d1

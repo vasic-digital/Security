@@ -1,0 +1,238 @@
+classDiagram
+    direction LR
+
+    namespace guardrails {
+        class Rule {
+            <<interface>>
+            +Name() string
+            +Check(content string) error
+        }
+
+        class Engine {
+            -rules []Rule
+            -config *Config
+            -mu sync.RWMutex
+            +AddRule(rule Rule)
+            +Check(content string) *Result
+        }
+
+        class Config {
+            +Rules map[string]RuleConfig
+            +StopOnFirstFailure bool
+        }
+
+        class RuleConfig {
+            +Enabled bool
+            +Severity Severity
+        }
+
+        class Result {
+            +Passed bool
+            +Results []RuleResult
+        }
+
+        class RuleResult {
+            +RuleName string
+            +Passed bool
+            +Severity Severity
+            +Error string
+        }
+
+        class MaxLengthRule {
+            -maxLength int
+            +Name() string
+            +Check(content string) error
+        }
+
+        class ForbiddenPatternsRule {
+            -patterns []*regexp.Regexp
+            -names []string
+            +Name() string
+            +Check(content string) error
+        }
+
+        class RequireFormatRule {
+            -pattern *regexp.Regexp
+            -formatName string
+            +Name() string
+            +Check(content string) error
+        }
+    }
+
+    Engine --> Rule : uses
+    Engine --> Config : configured by
+    Engine --> Result : produces
+    Config --> RuleConfig : contains
+    Result --> RuleResult : contains
+    MaxLengthRule ..|> Rule : implements
+    ForbiddenPatternsRule ..|> Rule : implements
+    RequireFormatRule ..|> Rule : implements
+
+    namespace pii {
+        class Detector {
+            <<interface>>
+            +Detect(text string) []Match
+        }
+
+        class Match {
+            +Type Type
+            +Value string
+            +Start int
+            +End int
+            +Confidence float64
+        }
+
+        class Redactor {
+            -config *Config_PII
+            -detectors map[Type]Detector
+            +Detect(text string) []Match
+            +Redact(text string) (string, []Match)
+        }
+
+        class Config_PII {
+            +EnabledDetectors []Type
+            +RedactionStrategy RedactionStrategy
+            +MaskChar rune
+        }
+
+        class regexDetector {
+            -piiType Type
+            -pattern *regexp.Regexp
+            -confidence float64
+            +Detect(text string) []Match
+        }
+
+        class creditCardDetector {
+            +Detect(text string) []Match
+        }
+    }
+
+    Redactor --> Detector : delegates to
+    Redactor --> Config_PII : configured by
+    Redactor --> Match : produces
+    regexDetector ..|> Detector : implements
+    creditCardDetector ..|> Detector : implements
+
+    namespace content {
+        class Filter {
+            <<interface>>
+            +Check(input string) (FilterResult, error)
+        }
+
+        class FilterResult {
+            +Allowed bool
+            +Reason string
+            +Score float64
+        }
+
+        class ChainFilter {
+            -filters []Filter
+            +AddFilter(filter Filter)
+            +Check(input string) (FilterResult, error)
+        }
+
+        class LengthFilter {
+            -minLength int
+            -maxLength int
+            +Check(input string) (FilterResult, error)
+        }
+
+        class PatternFilter {
+            -patterns []*regexp.Regexp
+            -names []string
+            +Check(input string) (FilterResult, error)
+        }
+
+        class KeywordFilter {
+            -keywords []string
+            -caseSensitive bool
+            +Check(input string) (FilterResult, error)
+        }
+    }
+
+    ChainFilter --> Filter : chains
+    ChainFilter --> FilterResult : produces
+    LengthFilter ..|> Filter : implements
+    PatternFilter ..|> Filter : implements
+    KeywordFilter ..|> Filter : implements
+
+    namespace policy {
+        class Enforcer {
+            -policies map[string]*Policy
+            -mu sync.RWMutex
+            +LoadPolicy(policy *Policy) error
+            +LoadPolicies(policies []*Policy) error
+            +RemovePolicy(name string)
+            +GetPolicy(name string) *Policy
+            +Evaluate(ctx, name, evalCtx) (*EvaluationResult, error)
+            +EvaluateAll(ctx, evalCtx) (*EvaluationResult, error)
+        }
+
+        class Policy {
+            +Name string
+            +Description string
+            +Rules []Rule_Policy
+            +DefaultDecision Decision
+        }
+
+        class Rule_Policy {
+            +Name string
+            +Conditions []Condition
+            +Decision Decision
+        }
+
+        class Condition {
+            +Field string
+            +Operator Operator
+            +Value string
+            +Values []string
+        }
+
+        class EvaluationContext {
+            +Fields map[string]string
+        }
+
+        class EvaluationResult {
+            +Decision Decision
+            +MatchedRule string
+            +Reason string
+        }
+    }
+
+    Enforcer --> Policy : manages
+    Enforcer --> EvaluationResult : produces
+    Policy --> Rule_Policy : contains
+    Rule_Policy --> Condition : contains
+
+    namespace scanner {
+        class Scanner {
+            <<interface>>
+            +Scan(ctx, target string) ([]Finding, error)
+        }
+
+        class Finding {
+            +Severity Severity
+            +Title string
+            +Description string
+            +Location string
+            +CWE string
+            +Remediation string
+        }
+
+        class Report {
+            +Findings []Finding
+            +TotalCount int
+            +BySeverity map[Severity]int
+            +ScannerName string
+            +Target string
+            +Duration time.Duration
+            +ScannedAt time.Time
+            +HasCritical() bool
+            +HasHighOrAbove() bool
+            +FilterBySeverity(minSeverity) []Finding
+            +Summary() string
+        }
+    }
+
+    Scanner --> Finding : produces
+    Report --> Finding : aggregates
