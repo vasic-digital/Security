@@ -71,17 +71,31 @@ type EvaluationContext struct {
 	Fields map[string]string
 }
 
+// PolicyEvaluator is the function type for evaluating a single policy.
+type PolicyEvaluator func(
+	ctx context.Context,
+	policy *Policy,
+	evalCtx *EvaluationContext,
+) (*EvaluationResult, error)
+
 // Enforcer loads and evaluates policies.
 type Enforcer struct {
-	policies map[string]*Policy
-	mu       sync.RWMutex
+	policies        map[string]*Policy
+	mu              sync.RWMutex
+	policyEvaluator PolicyEvaluator // allows injection for testing
 }
 
 // NewEnforcer creates a new Enforcer.
 func NewEnforcer() *Enforcer {
 	return &Enforcer{
-		policies: make(map[string]*Policy),
+		policies:        make(map[string]*Policy),
+		policyEvaluator: evaluatePolicy,
 	}
+}
+
+// SetPolicyEvaluator allows injecting a custom policy evaluator for testing.
+func (e *Enforcer) SetPolicyEvaluator(eval PolicyEvaluator) {
+	e.policyEvaluator = eval
 }
 
 // LoadPolicy adds a policy to the enforcer.
@@ -166,7 +180,7 @@ func (e *Enforcer) EvaluateAll(
 	}
 
 	for _, policy := range policies {
-		result, err := evaluatePolicy(ctx, policy, evalCtx)
+		result, err := e.policyEvaluator(ctx, policy, evalCtx)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error evaluating policy %q: %w",

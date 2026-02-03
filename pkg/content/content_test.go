@@ -210,3 +210,21 @@ func TestChainFilter_WithPatternFilter(t *testing.T) {
 		})
 	}
 }
+
+// errorFilter is a test filter that always returns an error.
+type errorFilter struct{}
+
+func (f *errorFilter) Check(_ string) (FilterResult, error) {
+	return FilterResult{}, assert.AnError
+}
+
+func TestChainFilter_FilterReturnsError(t *testing.T) {
+	chain := NewChainFilter(
+		NewLengthFilter(1, 100),
+		&errorFilter{},
+	)
+
+	result, err := chain.Check("hello")
+	require.Error(t, err)
+	assert.False(t, result.Allowed)
+}

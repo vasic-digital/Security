@@ -309,3 +309,81 @@ func TestMaskValue_IPAddress(t *testing.T) {
 	assert.NotContains(t, result, "192")
 	assert.Contains(t, result, "***")
 }
+
+func TestMaskValue_DefaultType(t *testing.T) {
+	// Test the default case (unknown type)
+	m := Match{
+		Type:  Type("unknown_type"),
+		Value: "some_value",
+	}
+	result := maskValue(m, '*')
+	// Default case should mask entire value
+	assert.Equal(t, "**********", result)
+	assert.Len(t, result, len("some_value"))
+}
+
+func TestMaskValue_ShortValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		match    Match
+		maskChar rune
+	}{
+		{
+			name: "short phone",
+			match: Match{
+				Type:  TypePhone,
+				Value: "123",
+			},
+			maskChar: '*',
+		},
+		{
+			name: "short ssn",
+			match: Match{
+				Type:  TypeSSN,
+				Value: "12",
+			},
+			maskChar: '#',
+		},
+		{
+			name: "short credit card",
+			match: Match{
+				Type:  TypeCreditCard,
+				Value: "123",
+			},
+			maskChar: 'X',
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := maskValue(tt.match, tt.maskChar)
+			// Short values should get full mask
+			assert.NotEmpty(t, result)
+			assert.Equal(t, len(tt.match.Value), len(result))
+		})
+	}
+}
+
+func TestMaskValue_EmailNoAt(t *testing.T) {
+	// Edge case: email without @ (should not happen but tests default path)
+	m := Match{
+		Type:  TypeEmail,
+		Value: "invalidemail",
+	}
+	result := maskValue(m, '*')
+	// Should mask the whole value (length of "invalidemail" is 12)
+	assert.Len(t, result, len("invalidemail"))
+	assert.NotContains(t, result, "invalidemail")
+}
+
+func TestMaskStr_ShortString(t *testing.T) {
+	// Test maskStr with string shorter than keepFirst
+	result := maskStr("ab", 5, '*')
+	assert.Equal(t, "**", result)
+}
+
+func TestMaskStr_ExactKeepFirst(t *testing.T) {
+	// Test maskStr with string exactly equal to keepFirst
+	result := maskStr("abc", 3, '*')
+	assert.Equal(t, "***", result)
+}

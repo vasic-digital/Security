@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -662,4 +663,180 @@ func TestEvaluationResult_HasFields(t *testing.T) {
 	assert.Equal(t, DecisionDeny, result.Decision)
 	assert.Equal(t, "test_rule", result.MatchedRule)
 	assert.Equal(t, "matched rule", result.Reason)
+}
+
+func TestEnforcer_LoadPolicies_WithError(t *testing.T) {
+	enforcer := NewEnforcer()
+	policies := []*Policy{
+		{Name: "valid", Rules: []Rule{}},
+		{Name: "", Rules: []Rule{}}, // Empty name should cause an error
+	}
+	err := enforcer.LoadPolicies(policies)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load policy")
+}
+
+func TestEnforcer_Evaluate_UnknownOperator(t *testing.T) {
+	enforcer := NewEnforcer()
+	ctx := context.Background()
+
+	policy := &Policy{
+		Name: "unknown_op",
+		Rules: []Rule{
+			{
+				Name: "unknown_operator_rule",
+				Conditions: []Condition{
+					{
+						Field:    "field",
+						Operator: Operator("unknown_operator"),
+						Value:    "value",
+					},
+				},
+				Decision: DecisionAllow,
+			},
+		},
+		DefaultDecision: DecisionDeny,
+	}
+	_ = enforcer.LoadPolicy(policy)
+
+	// Unknown operator should return false, so default decision is used
+	result, err := enforcer.Evaluate(ctx, "unknown_op",
+		&EvaluationContext{
+			Fields: map[string]string{"field": "value"},
+		})
+	require.NoError(t, err)
+	assert.Equal(t, DecisionDeny, result.Decision)
+}
+
+func TestEnforcer_Evaluate_In_FieldNotExists(t *testing.T) {
+	enforcer := NewEnforcer()
+	ctx := context.Background()
+
+	policy := &Policy{
+		Name: "in_not_exists",
+		Rules: []Rule{
+			{
+				Name: "in_rule",
+				Conditions: []Condition{
+					{
+						Field:    "role",
+						Operator: OperatorIn,
+						Values:   []string{"admin", "moderator"},
+					},
+				},
+				Decision: DecisionAllow,
+			},
+		},
+		DefaultDecision: DecisionDeny,
+	}
+	_ = enforcer.LoadPolicy(policy)
+
+	// Field does not exist, In operator returns false
+	result, err := enforcer.Evaluate(ctx, "in_not_exists",
+		&EvaluationContext{
+			Fields: map[string]string{},
+		})
+	require.NoError(t, err)
+	assert.Equal(t, DecisionDeny, result.Decision)
+}
+
+func TestEnforcer_Evaluate_NotIn_FieldNotExists(t *testing.T) {
+	enforcer := NewEnforcer()
+	ctx := context.Background()
+
+	policy := &Policy{
+		Name: "notin_not_exists",
+		Rules: []Rule{
+			{
+				Name: "notin_rule",
+				Conditions: []Condition{
+					{
+						Field:    "ip",
+						Operator: OperatorNotIn,
+						Values:   []string{"10.0.0.1", "10.0.0.2"},
+					},
+				},
+				Decision: DecisionAllow,
+			},
+		},
+		DefaultDecision: DecisionDeny,
+	}
+	_ = enforcer.LoadPolicy(policy)
+
+	// Field does not exist, NotIn returns true
+	result, err := enforcer.Evaluate(ctx, "notin_not_exists",
+		&EvaluationContext{
+			Fields: map[string]string{},
+		})
+	require.NoError(t, err)
+	assert.Equal(t, DecisionAllow, result.Decision)
+}
+
+func TestEnforcer_EvaluateAll_EvaluatorError(t *testing.T) {
+	enforcer := NewEnforcer()
+	ctx := context.Background()
+
+	// Load a policy
+	_ = enforcer.LoadPolicy(&Policy{
+		Name:            "test",
+		Rules:           []Rule{},
+		DefaultDecision: DecisionAllow,
+	})
+
+	// Inject failing evaluator
+	enforcer.SetPolicyEvaluator(func(
+		_ context.Context,
+		_ *Policy,
+		_ *EvaluationContext,
+	) (*EvaluationResult, error) {
+		return nil, fmt.Errorf("evaluator failure")
+	})
+
+	result, err := enforcer.EvaluateAll(ctx, &EvaluationContext{
+		Fields: map[string]string{},
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "error evaluating policy")
+	assert.Contains(t, err.Error(), "evaluator failure")
+}
+
+func TestEnforcer_EvaluateAll_AuditDecision(t *testing.T) {
+	enforcer := NewEnforcer()
+	ctx := context.Background()
+
+	// Policy 1: allows everything
+	_ = enforcer.LoadPolicy(&Policy{
+		Name:            "permissive",
+		Rules:           []Rule{},
+		DefaultDecision: DecisionAllow,
+	})
+
+	// Policy 2: audits specific resource
+	_ = enforcer.LoadPolicy(&Policy{
+		Name: "audit_policy",
+		Rules: []Rule{
+			{
+				Name: "audit_sensitive",
+				Conditions: []Condition{
+					{
+						Field:    "resource",
+						Operator: OperatorContains,
+						Value:    "sensitive",
+					},
+				},
+				Decision: DecisionAudit,
+			},
+		},
+		DefaultDecision: DecisionAllow,
+	})
+
+	// Audit is more restrictive than Allow
+	result, err := enforcer.EvaluateAll(ctx,
+		&EvaluationContext{
+			Fields: map[string]string{"resource": "sensitive-data"},
+		})
+	require.NoError(t, err)
+	assert.Equal(t, DecisionAudit, result.Decision)
 }
