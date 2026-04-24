@@ -16,7 +16,7 @@ import (
 
 func TestGuardrailsEngine_ConcurrentChecks_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	engine := guardrails.NewEngine(guardrails.DefaultConfig())
@@ -45,7 +45,7 @@ func TestGuardrailsEngine_ConcurrentChecks_Stress(t *testing.T) {
 
 func TestGuardrailsEngine_ConcurrentAddAndCheck_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	engine := guardrails.NewEngine(guardrails.DefaultConfig())
@@ -71,7 +71,7 @@ func TestGuardrailsEngine_ConcurrentAddAndCheck_Stress(t *testing.T) {
 
 func TestPIIRedactor_ConcurrentRedaction_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	redactor := pii.NewRedactor(pii.DefaultConfig())
@@ -99,7 +99,7 @@ func TestPIIRedactor_ConcurrentRedaction_Stress(t *testing.T) {
 
 func TestContentFilterChain_ConcurrentChecks_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	chain := content.NewChainFilter(
@@ -126,7 +126,7 @@ func TestContentFilterChain_ConcurrentChecks_Stress(t *testing.T) {
 
 func TestPolicyEnforcer_ConcurrentEvaluation_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	enforcer := policy.NewEnforcer()
@@ -180,7 +180,7 @@ func TestPolicyEnforcer_ConcurrentEvaluation_Stress(t *testing.T) {
 
 func TestPolicyEnforcer_ConcurrentLoadAndEvaluate_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	enforcer := policy.NewEnforcer()
