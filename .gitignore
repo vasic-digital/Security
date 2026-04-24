@@ -34,3 +34,5 @@ coverage.out
 .env
 .env.local
 .env.*.local
+
+reports/demos/
