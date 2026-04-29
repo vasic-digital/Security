@@ -44,6 +44,7 @@ func TestGuardrailsEngine_ConcurrentChecks_Stress(t *testing.T) {
 }
 
 func TestGuardrailsEngine_ConcurrentAddAndCheck_Stress(t *testing.T) {
+	// bluff-scan: no-assert-ok (concurrency test — go test -race catches data races; absence of panic == correctness)
 	if testing.Short() {
 		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
@@ -179,6 +180,7 @@ func TestPolicyEnforcer_ConcurrentEvaluation_Stress(t *testing.T) {
 }
 
 func TestPolicyEnforcer_ConcurrentLoadAndEvaluate_Stress(t *testing.T) {
+	// bluff-scan: no-assert-ok (concurrency test — go test -race catches data races; absence of panic == correctness)
 	if testing.Short() {
 		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
