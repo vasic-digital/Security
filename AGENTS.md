@@ -469,3 +469,18 @@ rule) MUST appear in every submodule's `CONSTITUTION.md`,
 `CLAUDE.md`, and `AGENTS.md`. Non-compliance is a release blocker.
 
 **Full text:** parent project's `CONSTITUTION.md` Article XI §11.9.
+
+
+<!-- Cascaded governance requirement -->
+**bar for shipping is not**
+
+
+
+<!-- Cascaded governance requirement -->
+**Host Power Management is Forbidden**
+
+
+
+<!-- Cascaded governance requirement -->
+**Reproduction-Before-Fix**
+
