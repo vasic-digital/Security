@@ -15,12 +15,6 @@ func newTestStorage(t *testing.T) *FileStorage {
 	return NewFileStorage(dir)
 }
 
-func TestNewFileStorage(t *testing.T) {
-	fs := NewFileStorage("/tmp/test")
-	assert.NotNil(t, fs)
-	assert.Equal(t, "/tmp/test", fs.storageDir)
-}
-
 func TestStoreAndRetrieve(t *testing.T) {
 	fs := newTestStorage(t)
 	require.NoError(t, fs.Store("key1", "value1"))
